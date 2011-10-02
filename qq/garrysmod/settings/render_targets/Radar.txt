@@ -1,0 +1,6 @@
+"Radar"
+{
+	"Name"        "Radar"
+	"Width"        "512"
+	"Height"    "512"
+}

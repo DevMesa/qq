@@ -1,0 +1,7 @@
+"g_blurx"
+{
+	"$size" 			"6" 
+	"$ignorez"		1
+	"$additive"		1
+	"$basetexture" "_rt_FullFrameFB"
+}

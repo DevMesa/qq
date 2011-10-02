@@ -1,0 +1,189 @@
+#ifndef DONTUNLOAD_H
+#define DONTUNLOAD_H
+
+int LockLibraryIntoProcessMem(HMODULE DllHandle, HMODULE *LocalDllHandle)
+{
+	if(NULL == LocalDllHandle)
+		return ERROR_INVALID_PARAMETER;
+	*LocalDllHandle = NULL;
+	TCHAR moduleName[1024];
+	if(0 == GetModuleFileName(DllHandle, moduleName, sizeof(moduleName)/ sizeof(TCHAR)))
+		return GetLastError();
+	*LocalDllHandle = LoadLibrary(moduleName);
+	if(NULL == *LocalDllHandle)
+		return GetLastError();
+	return NO_ERROR;
+}
+#ifndef _delayimp_h
+extern "C" IMAGE_DOS_HEADER __ImageBase;
+#endif
+HMODULE GetCurrentModule()
+{
+	return reinterpret_cast<HMODULE>(&__ImageBase);
+}
+BOOL APIENTRY DllMain( HMODULE hModule, DWORD ul_reason_for_call, LPVOID lpReserved)
+{
+	HMODULE self = GetCurrentModule();
+	switch(ul_reason_for_call)
+	{
+		case DLL_PROCESS_ATTACH:
+			LockLibraryIntoProcessMem(hModule, &self);
+			break;
+		case DLL_PROCESS_DETACH:
+			break;
+	}
+	return TRUE;
+}
+
+///////////////////////////
+
+
+
+
+
+class IScriptEnforcer
+{
+public:
+	virtual void				Unknown001();					//0000
+	virtual void				Unknown002();					//0004
+	virtual void				Unknown003();					//0008
+	virtual void				Unknown004();					//000C
+	virtual void				Unknown005();					//0010
+	virtual void				Unknown006();					//0014
+	virtual void				Unknown007();					//0018
+	virtual void				Unknown008();					//001C
+	virtual void				Unknown009();					//0020
+	virtual void				Unknown010();					//0024
+	virtual void				Unknown011();					//0028
+	virtual void				Unknown012();					//002C
+	virtual void				Unknown013();					//0030
+	virtual void				Unknown014();					//0034
+	virtual void				Unknown015();					//0038
+	virtual void				Unknown016();					//003C
+	virtual void				Unknown017();					//0040
+	virtual bool				IsActive( void );				//0044
+	virtual bool				ScriptAllowed(
+									char* strScript,
+									unsigned char* data,
+									int size,
+									unsigned char* u1 );		//0048
+};
+
+struct ScriptEnforcer_VTable
+{
+	void ( __stdcall* Unknown001 )();							//0000
+	void ( __stdcall* Unknown002 )();							//0004
+	void ( __stdcall* Unknown003 )();							//0008
+	void ( __stdcall* Unknown004 )();							//000C
+	void ( __stdcall* Unknown005 )();							//0010
+	void ( __stdcall* Unknown006 )();							//0014
+	void ( __stdcall* Unknown007 )();							//0018
+	void ( __stdcall* Unknown008 )();							//001C
+	void ( __stdcall* Unknown009 )();							//0020
+	void ( __stdcall* Unknown010 )();							//0024
+	void ( __stdcall* Unknown011 )();							//0028
+	void ( __stdcall* Unknown012 )();							//002C
+	void ( __stdcall* Unknown013 )();							//0030
+	void ( __stdcall* Unknown014 )();							//0034
+	void ( __stdcall* Unknown015 )();							//0038
+	void ( __stdcall* Unknown016 )();							//003C
+	void ( __stdcall* Unknown017 )();							//0040
+	bool ( __stdcall* IsActive )();								//0044
+	bool ( __stdcall* ScriptAllowed )(char* strScript, unsigned char* data, int size, unsigned char* u1); //004C
+};
+
+
+
+
+BOOL DataCompare( BYTE* pData, BYTE* bMask, char * szMask )
+{
+	for( ; *szMask; ++szMask, ++pData, ++bMask )
+		if( *szMask == 'x' && *pData != *bMask )
+			return FALSE;
+ 
+	return ( *szMask == NULL );
+}
+
+char hexvals[16] = {'0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'a', 'b', 'c', 'd', 'e', 'f'};
+void ToHex(char* out, BYTE byte)
+{
+	char a = hexvals[((BYTE)byte >> 4) % 16];
+	char b = hexvals[(BYTE)byte % 16];
+
+	out[0] = a;
+	out[1] = b;
+}
+
+void ToMD5(char* ret, BYTE* md5)
+{
+	for(int i = 0; i < 16; i++)
+		ToHex((char*)(ret + (i * 2)), md5[i]);
+	
+	ret[32] = 0;
+	return;
+}
+
+DWORD FindPattern( DWORD dwAddress, DWORD dwLen, BYTE *bMask, char * szMask )
+{
+	for( DWORD i = 0; i < dwLen; i++ )
+		if( DataCompare( (BYTE*)( dwAddress + i ), bMask, szMask ) )
+			return (DWORD)( dwAddress + i );
+ 
+	return 0;
+}
+
+#define CALL_HOOK(gLua, name) \
+	ILuaObject *hookT = gLua->GetGlobal("hook");\
+		ILuaObject *hookM = hookT->GetMember("Call");\
+			hookM->Push();\
+			\
+			gLua->Push(name);\
+			gLua->PushNil();\
+			\
+			gLua_Menu->Call(2, 1);\
+		hookM->UnReference();\
+	hookT->UnReference();
+
+#define CALL_HOOK_1(gLua, name, a) \
+	ILuaObject *hookT = gLua->GetGlobal("hook");\
+		ILuaObject *hookM = hookT->GetMember("Call");\
+			hookM->Push();\
+			\
+			gLua->Push(name);\
+			gLua->PushNil();\
+			gLua->Push(a);\
+			\
+			gLua->Call(3, 1);\
+		hookM->UnReference();\
+	hookT->UnReference();
+
+#define CALL_HOOK_2(gLua, name, a, b) \
+	ILuaObject *hookT = gLua->GetGlobal("hook");\
+		ILuaObject *hookM = hookT->GetMember("Call");\
+			hookM->Push();\
+			\
+			gLua->Push(name);\
+			gLua->PushNil();\
+			gLua->Push(a);\
+			gLua->Push(b);\
+			\
+			gLua->Call(4, 1);\
+		hookM->UnReference();\
+	hookT->UnReference();
+
+#define CALL_HOOK_3(gLua, name, a, b, c) \
+	ILuaObject *hookT = gLua->GetGlobal("hook");\
+		ILuaObject *hookM = hookT->GetMember("Call");\
+			hookM->Push();\
+			\
+			gLua->Push(name);\
+			gLua->PushNil();\
+			gLua->Push(a);\
+			gLua->Push(b);\
+			gLua->Push(c);\
+			\
+			gLua->Call(5, 1);\
+		hookM->UnReference();\
+	hookT->UnReference();
+
+#endif
